@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <title>Water Defender: Misión Planeta 🌊⚡</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@500;700&display=swap');
+
+    * {
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: manipulation;
+    }
+
+    body {
+      font-family: 'Rajdhani', sans-serif;
+      background-color: #030712;
+      color: #f3f4f6;
+      overflow: hidden;
+    }
+
+    .font-orbitron {
+      font-family: 'Orbitron', sans-serif;
+    }
+
+    .neon-text-blue {
+      text-shadow: 0 0 5px #06b6d4, 0 0 15px #06b6d4, 0 0 30px #0284c7;
+    }
+
+    .neon-text-green {
+      text-shadow: 0 0 5px #10b981, 0 0 15px #10b981;
+    }
+
+    .neon-text-pink {
+      text-shadow: 0 0 5px #ec4899, 0 0 15px #ec4899;
+    }
+
+    .neon-box {
+      box-shadow: 0 0 15px rgba(6, 182, 212, 0.3), inset 0 0 15px rgba(6, 182, 212, 0.2);
+    }
+
+    canvas {
+      display: block;
+      touch-action: none;
+    }
+
+    /* Screen shake effect */
+    @keyframes shake {
+      0% { transform: translate(1px, 1px) rotate(0deg); }
+      10% { transform: translate(-1px, -2px) rotate(-1deg); }
+      20% { transform: translate(-3px, 0px) rotate(1deg); }
+      30% { transform: translate(3px, 2px) rotate(0deg); }
+      40% { transform: translate(1px, -1px) rotate(1deg); }
+      50% { transform: translate(-1px, 2px) rotate(-1deg); }
+      60% { transform: translate(-3px, 1px) rotate(0deg); }
+      70% { transform: translate(3px, 1px) rotate(-1deg); }
+      80% { transform: translate(-1px, -1px) rotate(1deg); }
+      90% { transform: translate(1px, 2px) rotate(0deg); }
+      100% { transform: translate(1px, -2px) rotate(-1deg); }
+    }
+
+    .shaking {
+      animation: shake 0.3s cubic-bezier(.36,.07,.19,.97) both;
+    }
+  </style>
+</head>
+<body class="h-screen w-screen relative bg-slate-950 flex flex-col justify-between items-center overflow-hidden">
+
+  <!-- Canvas for Game World -->
+  <canvas id="gameCanvas" class="absolute inset-0 z-0 w-full h-full cursor-pointer"></canvas>
+
+  <!-- HUD Container -->
+  <div id="hud" class="absolute top-0 left-0 right-0 z-10 p-3 sm:p-5 pointer-events-none flex justify-between items-start">
+    
+    <!-- Left Status (Score & Combo) -->
+    <div class="flex flex-col gap-1">
+      <div class="bg-slate-900/80 border border-cyan-500/40 backdrop-blur-md px-4 py-2 rounded-2xl flex items-center gap-3">
+        <i class="fa-solid fa-trophy text-amber-400 text-xl"></i>
+        <div>
+          <p class="text-[10px] text-cyan-400 font-orbitron uppercase tracking-widest">Puntos</p>
+          <p id="scoreText" class="text-2xl font-bold font-orbitron text-white leading-none">0</p>
+        </div>
+      </div>
+
+      <!-- Combo Indicator -->
+      <div id="comboBadge" class="opacity-0 transition-opacity duration-300 bg-gradient-to-r from-pink-600 to-purple-600 border border-pink-400 px-3 py-1 rounded-full text-center">
+        <span id="comboText" class="text-xs font-black font-orbitron text-white italic">COMBO x2!</span>
+      </div>
+    </div>
+
+    <!-- Center (Level Indicator) -->
+    <div class="bg-slate-900/80 border border-slate-700 backdrop-blur-md px-3 py-1.5 rounded-full flex items-center gap-2">
+      <i class="fa-solid fa-bolt text-cyan-400 text-xs animate-pulse"></i>
+      <span class="text-xs font-orbitron text-slate-300">NIVEL <span id="levelText" class="text-cyan-400 font-bold">1</span></span>
+    </div>
+
+    <!-- Right Status (Planet Health & Shield) -->
+    <div class="flex flex-col items-end gap-1 w-32 sm:w-44">
+      <div class="bg-slate-900/80 border border-cyan-500/40 backdrop-blur-md p-2.5 rounded-2xl w-full">
+        <div class="flex justify-between items-center mb-1">
+          <span class="text-[10px] text-cyan-400 font-orbitron font-semibold">RESERVA PLANETA</span>
+          <i id="shieldIcon" class="fa-solid fa-shield-halved text-cyan-400 text-xs hidden animate-bounce"></i>
+        </div>
+        <!-- Health Bar -->
+        <div class="w-full bg-slate-950 h-3 rounded-full overflow-hidden border border-slate-700/50 p-0.5">
+          <div id="healthBar" class="h-full bg-gradient-to-r from-cyan-500 to-emerald-400 rounded-full transition-all duration-300 w-full"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Start Screen -->
+  <div id="startScreen" class="absolute inset-0 z-20 bg-slate-950/90 backdrop-blur-xl flex flex-col items-center justify-between p-6 text-center">
+    
+    <div class="my-auto max-w-md w-full flex flex-col items-center">
+      <!-- Title -->
+      <div class="relative mb-6">
+        <div class="absolute -inset-1 bg-gradient-to-r from-cyan-500 to-blue-600 rounded-3xl blur-lg opacity-50 animate-pulse"></div>
+        <div class="relative bg-slate-900 border border-cyan-500/50 p-6 rounded-3xl">
+          <i class="fa-solid fa-earth-americas text-6xl text-cyan-400 mb-3 animate-spin" style="animation-duration: 20s;"></i>
+          <h1 class="text-3xl sm:text-4xl font-black font-orbitron text-white tracking-wide">WATER DEFENDER</h1>
+          <p class="text-xs font-orbitron text-cyan-400 tracking-widest mt-1">MISIÓ N  P L A N E T A</p>
+        </div>
+      </div>
+
+      <!-- Quick Instructions -->
+      <div class="grid grid-cols-3 gap-2 w-full mb-8 text-left">
+        <div class="bg-slate-900/80 border border-slate-800 p-3 rounded-2xl flex flex-col items-center text-center">
+          <span class="text-2xl mb-1">💧</span>
+          <p class="text-[10px] text-slate-300 font-bold">TOCA / ATRAPA</p>
+          <p class="text-[9px] text-slate-500">Gotas de Agua Dulce</p>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-800 p-3 rounded-2xl flex flex-col items-center text-center">
+          <span class="text-2xl mb-1">🔧</span>
+          <p class="text-[10px] text-slate-300 font-bold">REPARA YA</p>
+          <p class="text-[9px] text-slate-500">Llaves & Fugas</p>
+        </div>
+        <div class="bg-slate-900/80 border border-slate-800 p-3 rounded-2xl flex flex-col items-center text-center">
+          <span class="text-2xl mb-1">💥</span>
+          <p class="text-[10px] text-slate-300 font-bold">DESTRUYE</p>
+          <p class="text-[9px] text-slate-500">Tóxicos & Basura</p>
+        </div>
+      </div>
+
+      <!-- Play Button -->
+      <button id="startBtn" class="w-full py-4 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black font-orbitron text-lg tracking-wider rounded-2xl shadow-lg shadow-cyan-500/30 active:scale-95 transition transform">
+        ¡INICIAR MISIÓN!
+      </button>
+    </div>
+
+    <!-- Footer -->
+    <p class="text-xs text-slate-600 font-orbitron">HYDRO-ARCADE SYSTEM &bull; v2.0</p>
+  </div>
+
+  <!-- Game Over Screen -->
+  <div id="gameOverScreen" class="hidden absolute inset-0 z-30 bg-slate-950/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 text-center">
+    <div class="max-w-md w-full bg-slate-900 border border-rose-500/40 p-6 rounded-3xl shadow-2xl relative overflow-hidden">
+      
+      <div class="absolute -right-10 -top-10 text-9xl text-rose-500/10 pointer-events-none">
+        <i class="fa-solid fa-triangle-exclamation"></i>
+      </div>
+
+      <i class="fa-solid fa-skull-crossbones text-5xl text-rose-500 mb-3 animate-bounce"></i>
+      <h2 class="text-2xl font-black font-orbitron text-rose-500 tracking-wider mb-1">RESERVA AGOTADA</h2>
+      <p class="text-xs text-slate-400 mb-6 font-orbitron">El planeta se quedó sin agua limpia</p>
+
+      <!-- Stats Box -->
+      <div class="bg-slate-950/80 rounded-2xl p-4 border border-slate-800 mb-6 grid grid-cols-2 gap-4">
+        <div>
+          <p class="text-[10px] text-slate-500 uppercase font-orbitron">Puntuación Final</p>
+          <p id="finalScore" class="text-3xl font-black font-orbitron text-cyan-400">0</p>
+        </div>
+        <div>
+          <p class="text-[10px] text-slate-500 uppercase font-orbitron">Rango Conseguido</p>
+          <p id="finalRank" class="text-sm font-bold font-orbitron text-emerald-400 mt-2">Novato</p>
+        </div>
+      </div>
+
+      <!-- Eco-Fact Card -->
+      <div class="bg-cyan-950/30 border border-cyan-800/50 p-4 rounded-2xl mb-6 text-left flex items-start gap-3">
+        <i class="fa-solid fa-lightbulb text-cyan-400 text-xl mt-0.5"></i>
+        <div>
+          <p class="text-[10px] text-cyan-400 font-bold uppercase tracking-wider font-orbitron mb-1">Dato de Impacto Real</p>
+          <p id="factText" class="text-xs text-slate-300 leading-relaxed">Una sola fuga goteando puede desperdiciar más de 30 litros de agua al día.</p>
+        </div>
+      </div>
+
+      <!-- Action Buttons -->
+      <div class="flex gap-3">
+        <button id="restartBtn" class="flex-1 py-3.5 bg-gradient-to-r from-cyan-500 to-blue-600 hover:from-cyan-400 hover:to-blue-500 text-slate-950 font-black font-orbitron text-sm rounded-xl active:scale-95 transition">
+          <i class="fa-solid fa-rotate-right mr-1"></i> REINTENTAR
+        </button>
+        <button id="shareBtn" class="px-4 bg-slate-800 hover:bg-slate-700 border border-slate-700 text-cyan-400 rounded-xl active:scale-95 transition">
+          <i class="fa-solid fa-share-nodes"></i>
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <script>
+    /* ==========================================
+       AUDIO SYNTHESIZER (Web Audio API)
+       ========================================== */
+    class SoundEngine {
+      constructor() {
+        this.ctx = null;
+      }
+
+      init() {
+        if (!this.ctx) {
+          this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+        }
+      }
+
+      playDrop() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+      }
+
+      playRepair() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(300, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(600, this.ctx.currentTime + 0.08);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.2);
+      }
+
+      playExplode() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(30, this.ctx.currentTime + 0.25);
+        gain.gain.setValueAtTime(0.4, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.25);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.25);
+      }
+
+      playPowerup() {
+        if (!this.ctx) return;
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1000, this.ctx.currentTime + 0.3);
+        gain.gain.setValueAtTime(0.3, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.3);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.3);
+      }
+    }
+
+    /* ==========================================
+       GAME STATE & CONFIGURATION
+       ========================================== */
+    const canvas = document.getElementById('gameCanvas');
+    const ctx = canvas.getContext('2d');
+    const audio = new SoundEngine();
+
+    // Educational facts pool
+    const ecoFacts = [
+      "Una llave goteando desperdicia más de 30 litros de agua por día.",
+      "Lavar tu auto con cubeta en vez de manguera ahorra hasta 250 litros de agua.",
+      "Producir 1kg de carne de res requiere aproximadamente 15,000 litros de agua.",
+      "Cerrar la llave mientras te cepillas los dientes ahorra 12 litros por minuto.",
+      "Una ducha corta de 5 minutos ahorra casi 400 litros de agua a la semana.",
+      "El agua de lluvia recolectada se puede usar para regar plantas y limpiar pisos."
+    ];
+
+    let gameState = 'START'; // START, PLAYING, GAMEOVER
+    let score = 0;
+    let health = 100;
+    let level = 1;
+    let combo = 0;
+    let comboTimer = null;
+    let shieldActive = false;
+    let shieldTimer = null;
+
+    let items = [];
+    let particles = [];
+    let floatingTexts = [];
+    let spawnTimer = 0;
+    let spawnInterval = 60; // Frames between spawns
+
+    // Resize canvas
+    function resizeCanvas() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    window.addEventListener('resize', resizeCanvas);
+    resizeCanvas();
+
+    /* ==========================================
+       PARTICLE & FLOATING TEXT SYSTEMS
+       ========================================== */
+    class Particle {
+      constructor(x, y, color) {
+        this.x = x;
+        this.y = y;
+        this.color = color;
+        this.radius = Math.random() * 4 + 2;
+        this.vx = (Math.random() - 0.5) * 8;
+        this.vy = (Math.random() - 0.5) * 8;
+        this.alpha = 1;
+        this.decay = Math.random() * 0.03 + 0.015;
+      }
+
+      update() {
+        this.x += this.vx;
+        this.y += this.vy;
+        this.alpha -= this.decay;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.radius, 0, Math.PI * 2);
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 10;
+        ctx.shadowColor = this.color;
+        ctx.fill();
+        ctx.restore();
+      }
+    }
+
+    class FloatingText {
+      constructor(x, y, text, color) {
+        this.x = x;
+        this.y = y;
+        this.text = text;
+        this.color = color;
+        this.vy = -2;
+        this.alpha = 1;
+      }
+
+      update() {
+        this.y += this.vy;
+        this.alpha -= 0.02;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.globalAlpha = Math.max(0, this.alpha);
+        ctx.font = '900 16px Orbitron';
+        ctx.fillStyle = this.color;
+        ctx.shadowBlur = 8;
+        ctx.shadowColor = this.color;
+        ctx.fillText(this.text, this.x, this.y);
+        ctx.restore();
+      }
+    }
+
+    /* ==========================================
+       GAME ENTITIES
+       ========================================== */
+    class GameItem {
+      constructor() {
+        this.x = Math.random() * (canvas.width - 60) + 30;
+        this.y = -40;
+        this.radius = 26;
+        this.speed = Math.random() * (2 + level * 0.5) + 2;
+        
+        // Types: 'drop' (water), 'leak' (broken tap), 'toxic' (pollution), 'shield' (powerup)
+        const rand = Math.random();
+        if (rand < 0.5) {
+          this.type = 'drop';
+        } else if (rand < 0.75) {
+          this.type = 'toxic';
+        } else if (rand < 0.9) {
+          this.type = 'leak';
+        } else {
+          this.type = 'shield';
+        }
+
+        this.rotation = 0;
+        this.pulse = 0;
+      }
+
+      update() {
+        this.y += this.speed;
+        this.rotation += 0.02;
+        this.pulse += 0.05;
+      }
+
+      draw() {
+        ctx.save();
+        ctx.translate(this.x, this.y);
+
+        if (this.type === 'drop') {
+          // Water Drop
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = '#06b6d4';
+          ctx.fillStyle = '#38bdf8';
+          ctx.beginPath();
+          ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Icon / Symbol
+          ctx.font = '20px "Font Awesome 6 Free"';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('💧', 0, 2);
+
+        } else if (this.type === 'leak') {
+          // Leaking Tap
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = '#f59e0b';
+          ctx.fillStyle = '#d97706';
+          ctx.beginPath();
+          ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.font = '18px "Font Awesome 6 Free"';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🔧', 0, 0);
+
+        } else if (this.type === 'toxic') {
+          // Toxic Waste / Pollution
+          const scale = 1 + Math.sin(this.pulse) * 0.1;
+          ctx.scale(scale, scale);
+          ctx.shadowBlur = 15;
+          ctx.shadowColor = '#ef4444';
+          ctx.fillStyle = '#991b1b';
+          ctx.beginPath();
+          ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.font = '18px "Font Awesome 6 Free"';
+          ctx.fillStyle = '#fca5a5';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('☣️', 0, 0);
+
+        } else if (this.type === 'shield') {
+          // Power-up Shield
+          ctx.shadowBlur = 20;
+          ctx.shadowColor = '#10b981';
+          ctx.fillStyle = '#059669';
+          ctx.beginPath();
+          ctx.arc(0, 0, this.radius, 0, Math.PI * 2);
+          ctx.fill();
+
+          ctx.font = '18px "Font Awesome 6 Free"';
+          ctx.fillStyle = '#ffffff';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText('🛡️', 0, 0);
+        }
+
+        ctx.restore();
+      }
+    }
+
+    /* ==========================================
+       GAME LOGIC & INTERACTION
+       ========================================== */
+    function spawnParticles(x, y, color, count = 12) {
+      for (let i = 0; i < count; i++) {
+        particles.push(new Particle(x, y, color));
+      }
+    }
+
+    function addScore(points, x, y) {
+      combo++;
+      clearTimeout(comboTimer);
+      comboTimer = setTimeout(() => { combo = 0; updateComboUI(); }, 2000);
+
+      const finalPoints = points * (combo > 1 ? combo : 1);
+      score += finalPoints;
+
+      document.getElementById('scoreText').innerText = score;
+      floatingTexts.push(new FloatingText(x, y, `+${finalPoints}`, '#38bdf8'));
+
+      // Check level progression
+      if (score >= level * 150) {
+        level++;
+        document.getElementById('levelText').innerText = level;
+        spawnInterval = Math.max(25, 60 - level * 4);
+        floatingTexts.push(new FloatingText(canvas.width / 2, canvas.height / 2, `¡NIVEL ${level}!`, '#10b981'));
+        audio.playPowerup();
+      }
+
+      updateComboUI();
+    }
+
+    function updateComboUI() {
+      const badge = document.getElementById('comboBadge');
+      const text = document.getElementById('comboText');
+
+      if (combo > 1) {
+        badge.style.opacity = '1';
+        text.innerText = `COMBO x${combo}!`;
+      } else {
+        badge.style.opacity = '0';
+      }
+    }
+
+    function takeDamage(amount) {
+      if (shieldActive) {
+        shieldActive = false;
+        document.getElementById('shieldIcon').classList.add('hidden');
+        audio.playPowerup();
+        floatingTexts.push(new FloatingText(canvas.width / 2, canvas.height / 2, '¡ESCUDO BLOQUEADO!', '#10b981'));
+        return;
+      }
+
+      health -= amount;
+      document.body.classList.add('shaking');
+      setTimeout(() => document.body.classList.remove('shaking'), 300);
+
+      if (health <= 0) {
+        health = 0;
+        triggerGameOver();
+      }
+
+      updateHealthUI();
+    }
+
+    function updateHealthUI() {
+      const healthBar = document.getElementById('healthBar');
+      healthBar.style.width = `${health}%`;
+
+      if (health < 30) {
+        healthBar.className = "h-full bg-gradient-to-r from-rose-600 to-red-500 rounded-full transition-all duration-300 w-full animate-pulse";
+      } else {
+        healthBar.className = "h-full bg-gradient-to-r from-cyan-500 to-emerald-400 rounded-full transition-all duration-300 w-full";
+      }
+    }
+
+    /* Input Handling (Touch and Click) */
+    function handleInput(clientX, clientY) {
+      if (gameState !== 'PLAYING') return;
+
+      audio.init();
+
+      for (let i = items.length - 1; i >= 0; i--) {
+        const item = items[i];
+        const dist = Math.hypot(item.x - clientX, item.y - clientY);
+
+        if (dist < item.radius + 20) { // Touch padding
+          if (item.type === 'drop') {
+            audio.playDrop();
+            spawnParticles(item.x, item.y, '#38bdf8');
+            addScore(10, item.x, item.y);
+            health = Math.min(100, health + 2);
+            updateHealthUI();
+
+          } else if (item.type === 'leak') {
+            audio.playRepair();
+            spawnParticles(item.x, item.y, '#f59e0b');
+            addScore(25, item.x, item.y);
+
+          } else if (item.type === 'toxic') {
+            audio.playExplode();
+            spawnParticles(item.x, item.y, '#ef4444', 20);
+            takeDamage(20);
+            floatingTexts.push(new FloatingText(item.x, item.y, '-20 HP', '#ef4444'));
+
+          } else if (item.type === 'shield') {
+            audio.playPowerup();
+            spawnParticles(item.x, item.y, '#10b981', 20);
+            shieldActive = true;
+            document.getElementById('shieldIcon').classList.remove('hidden');
+            floatingTexts.push(new FloatingText(item.x, item.y, '¡ESCUDO ACTIVADO!', '#10b981'));
+          }
+
+          items.splice(i, 1);
+          break;
+        }
+      }
+    }
+
+    window.addEventListener('pointerdown', (e) => handleInput(e.clientX, e.clientY));
+
+    /* ==========================================
+       MAIN LOOP & SCREEN MANAGERS
+       ========================================== */
+    function gameLoop() {
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+      if (gameState === 'PLAYING') {
+        // Spawning Items
+        spawnTimer++;
+        if (spawnTimer >= spawnInterval) {
+          items.push(new GameItem());
+          spawnTimer = 0;
+        }
+
+        // Update & Draw Items
+        for (let i = items.length - 1; i >= 0; i--) {
+          const item = items[i];
+          item.update();
+          item.draw();
+
+          // Off-screen handling
+          if (item.y > canvas.height + item.radius) {
+            if (item.type === 'drop') {
+              takeDamage(5); // Missed clean drop penalty
+            } else if (item.type === 'leak') {
+              takeDamage(10); // Unfixed leak penalty
+            }
+            items.splice(i, 1);
+          }
+        }
+
+        // Update & Draw Particles
+        for (let i = particles.length - 1; i >= 0; i--) {
+          particles[i].update();
+          particles[i].draw();
+          if (particles[i].alpha <= 0) particles.splice(i, 1);
+        }
+
+        // Update & Draw Floating Texts
+        for (let i = floatingTexts.length - 1; i >= 0; i--) {
+          floatingTexts[i].update();
+          floatingTexts[i].draw();
+          if (floatingTexts[i].alpha <= 0) floatingTexts.splice(i, 1);
+        }
+      }
+
+      requestAnimationFrame(gameLoop);
+    }
+
+    function startGame() {
+      score = 0;
+      health = 100;
+      level = 1;
+      combo = 0;
+      items = [];
+      particles = [];
+      floatingTexts = [];
+      shieldActive = false;
+
+      document.getElementById('scoreText').innerText = '0';
+      document.getElementById('levelText').innerText = '1';
+      document.getElementById('shieldIcon').classList.add('hidden');
+      updateHealthUI();
+
+      document.getElementById('startScreen').classList.add('hidden');
+      document.getElementById('gameOverScreen').classList.add('hidden');
+
+      gameState = 'PLAYING';
+    }
+
+    function triggerGameOver() {
+      gameState = 'GAMEOVER';
+      audio.playExplode();
+
+      // Determine Rank
+      let rank = "Guardia Novato 🌱";
+      if (score >= 500) rank = "Leyenda Ambiental 🌊⚡";
+      else if (score >= 250) rank = "Héroe del H2O 💧🛡️";
+      else if (score >= 100) rank = "Defensor Hídrico 🔧";
+
+      document.getElementById('finalScore').innerText = score;
+      document.getElementById('finalRank').innerText = rank;
+
+      // Random Educational Fact
+      const randomFact = ecoFacts[Math.floor(Math.random() * ecoFacts.length)];
+      document.getElementById('factText').innerText = randomFact;
+
+      document.getElementById('gameOverScreen').classList.remove('hidden');
+    }
+
+    /* Event Listeners for UI Buttons */
+    document.getElementById('startBtn').addEventListener('click', () => {
+      audio.init();
+      startGame();
+    });
+
+    document.getElementById('restartBtn').addEventListener('click', () => {
+      startGame();
+    });
+
+    document.getElementById('shareBtn').addEventListener('click', () => {
+      const shareData = {
+        title: 'Water Defender',
+        text: `¡Hice ${score} puntos en Water Defender: Misión Planeta! 🌊⚡ ¿Puedes superarme?`,
+        url: window.location.href
+      };
+
+      if (navigator.share) {
+        navigator.share(shareData).catch(() => {});
+      } else {
+        alert(`¡Puntuación copiada!: ${shareData.text}`);
+      }
+    });
+
+    // Run animation loop
+    gameLoop();
+  </script>
+</body>
+</html>
